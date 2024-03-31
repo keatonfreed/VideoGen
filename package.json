@@ -12,6 +12,7 @@
   "dependencies": {
     "canvas": "^2.11.2",
     "dotenv": "^16.4.5",
+    "fluent-ffmpeg": "^2.1.2",
     "openai": "^4.29.2",
     "parse5": "^7.1.2",
     "prismjs": "^1.29.0"

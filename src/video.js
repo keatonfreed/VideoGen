@@ -3,14 +3,30 @@ const fs = require('fs');
 // const { drawHighlightedCode, themes: highlightThemes } = require('canvas-syntax-highlight')
 const { drawHighlightedCode } = require('./highlighter')
 
+// --------------------- VIDEO GLOBAL CONFIG ---------------------
 
-module.exports = async (base, output, framerate, code) => {
+const startBuffer = 0.5
+const startEndBuffer = 0.5
+const countdownTime = 3
+const countdownEndBuffer = 0.2
+const endBufferTime = 1
+
+
+//  VIDEO DETAILS
+const gradientSpeed = [10, 20]
+const gradientNum = 7
+
+// --------------------- END VIDEO CONFIG ---------------------
+
+module.exports = async (base, output, framerate, audioDuration, audioDuration2, idea) => {
     registerFont(base + '/src/fonts/FiraCode-Regular.ttf', { family: 'FiraCode' });
+
+    let videoLength = startBuffer + audioDuration + startEndBuffer + countdownTime + countdownEndBuffer + audioDuration2 + endBufferTime
+    const length = videoLength;
+    const framenum = Math.ceil(length * framerate);
 
     const width = 1080;
     const height = 1920;
-    const length = 0.2;
-    const framenum = length * framerate;
     const canvas = createCanvas(width, height);
     const context = canvas.getContext('2d');
 
@@ -18,7 +34,8 @@ module.exports = async (base, output, framerate, code) => {
 
     class BackgroundGradient {
         constructor() {
-            let speed = Math.random() * (15 - 8) + 8
+
+            let speed = Math.random() * (gradientSpeed[1] - gradientSpeed[0]) + gradientSpeed[0]
             // speed *= 2
 
             let min = width / 3
@@ -44,19 +61,7 @@ module.exports = async (base, output, framerate, code) => {
         }
     }
 
-    let gridGradients = [
-        new BackgroundGradient(),
-        new BackgroundGradient(),
-        new BackgroundGradient(),
-        new BackgroundGradient(),
-        new BackgroundGradient(),
-        new BackgroundGradient(),
-        new BackgroundGradient(),
-        // { x: width / 2, y: height / 2, rad: width / 2, color: [50, 100, 50] },
-        // { x: width / 2, y: 0, rad: width / 2.5, color: [50, 100, 50] },
-        // { x: width / 2, y: height, rad: width / 2.5, color: [50, 100, 50] },
-    ]
-
+    let gridGradients = Array.from({ length: gradientNum }, () => new BackgroundGradient());
 
     let startRender = performance.now()
     let lastRender = startRender
@@ -187,11 +192,8 @@ module.exports = async (base, output, framerate, code) => {
 
         // module.exports = getNodeTokenClass
         // `
-        //         let rawCode = `
-        // constclassNamestestaddinghere=node.attrs.find(attr => attr.name === 'class')
-        // `
-
-        let trimmedCode = code.split("\n").reduce((prev, curr) => {
+        5
+        let trimmedCode = idea['Code'].split("\n").reduce((prev, curr) => {
             prev += curr + "\n"
             return prev
         }, "")
@@ -204,7 +206,8 @@ module.exports = async (base, output, framerate, code) => {
         }
 
         let titlePadding = 85
-        let titleText = "Spot_The_Bug.js"
+        // let titleText = "Spot_The_Bug.js"
+        let titleText = "spotTheBug.js"
         // wrapText(codeSnippet, width / 8 + textSettings.padding, height / 10 + textSettings.padding + textSettings.lineHeight, width / 2 - (textSettings.padding * 2), textSettings.lineHeight);
         drawHighlightedCode(context, codeStyle, width / 8 + textSettings.padding, height / 10 + textSettings.padding + titlePadding + 5, textSettings.lineHeight, width * 3 / 4 - (textSettings.padding * 2))
 
@@ -236,5 +239,7 @@ module.exports = async (base, output, framerate, code) => {
     console.log(`Video rendered in: ${fullMs}ms | ${fullM}m ${fullS % 60}s`)
 
     output.end();
+
+    return { audioDelay: startBuffer, audioDelay2: startBuffer + audioDuration + startEndBuffer + countdownTime + countdownEndBuffer }
 }
 

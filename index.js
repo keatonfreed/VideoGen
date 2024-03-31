@@ -6,14 +6,18 @@ process.chdir(__dirname);
 
 const genAI = require("./src/ai")
 const genVideo = require("./src/video")
-const genVoice = require("./src/voice")
+const genAudio = require("./src/audio");
+const ffmpeg = require('fluent-ffmpeg');
 let _OverrideIdea
 let _LatestOutputs = false
+let _OverrideAudio = false
 
 
 // ----------------------- VIDEO GLOBAL CONFIG -----------------------
 
+
 _LatestOutputs = true
+_OverrideAudio = true
 
 _OverrideIdea = {
     Idea: 'Create a custom function to reverse a string without using the built-in reverse method.',
@@ -35,6 +39,11 @@ _OverrideIdea = {
     Script: "By initializing the loop with str.length, it attempts to access an out-of-bounds character, adding undefined to the beginning of our reversed string, a sneaky bug that's hard to spot without careful analysis."
 }
 
+music = [
+    `./src/assets/music/1.mp3`,
+    `./src/assets/music/2.mp3`,
+]
+
 // ----------------------- END VIDEO CONFIG -----------------------
 
 const framerate = 30
@@ -52,10 +61,36 @@ function createOutputPipe(path) {
         path
     ]);
 }
+function createFinalVideo(path, videoPath, musicPath, videoLength, audioPath, audioOffset, audioPath2, audioOffset2) {
+    // ffmpeg -i video.mp4 -i audio.wav -c:v copy -c:a aac output.mp4
+    options = [
+        '-i', videoPath,
+        '-i', audioPath,
+        '-i', audioPath2,
+        '-c:v', 'copy',
+        '-c:a', 'aac',
+        '-filter_complex', `[1:a]adelay=${audioOffset * 1000}|${audioOffset * 1000}[a1]; [2:a]adelay=${audioOffset2 * 1000}|${audioOffset2 * 1000}[a2]; [a1][a2]amix=inputs=2[a]`,
+        '-map', '0',
+        '-map', '[a]',
+        path
+    ]
+    return spawn('ffmpeg', options);
+}
 
+async function getMediaDuration(path) {
+    return new Promise((res, rej) => {
+        ffmpeg.ffprobe(path, (err, metadata) => {
+            if (!err) {
+                res(metadata.format.duration)
+            } else {
+                rej(err)
+            }
+        })
+    })
+}
 
 async function createVideo() {
-    const videoIdea = _OverrideIdea
+    let videoIdea = _OverrideIdea
 
     console.log("\n-- Video Starting --")
 
@@ -69,42 +104,90 @@ async function createVideo() {
     }
 
     let videoCode = videoIdea["Code"]
-    let videoCorrectCode = videoIdea["CorrectCode"]
     let videoScript = videoIdea["Script"]
     if (!videoCode || !videoScript) {
         return console.log("Video idea missing code or script:", videoCode, videoScript)
     }
 
-    let tasks = []
+    // let tasks = []
 
     let pathIdentity = Date.now().toString().slice(4, -2)
 
-    let videoPath = `./output/video/complete-${pathIdentity}.mp4`
-    let latestVideoPath = `./output/video/complete-latest.mp4`
-    let ffmpegPipe = createOutputPipe(videoPath)
-    if (_LatestOutputs) {
-        ffmpegPipe.on("exit", () => {
-            fs.copyFileSync(videoPath, latestVideoPath)
-        })
-    }
-    tasks.push(genVideo(__dirname, ffmpegPipe.stdin, framerate, videoCode + "\n\n" + videoCorrectCode))
-    console.log("\nStarting video generation...")
+    let startAudioPath = `./src/assets/spot_the_bug.mp3`
 
     let audioPath = `./output/audio/complete-${pathIdentity}.mp3`
     let latestAudioPath = `./output/audio/complete-latest.mp3`
-    tasks.push(genVoice(audioPath, videoScript))
-    console.log("\nStarting audio generation...")
-
-    await Promise.all(tasks)
-    if (_LatestOutputs) {
-        fs.copyFileSync(audioPath, latestAudioPath)
+    // tasks.push(genAudio(audioPath, videoScript))
+    let audioDuration2 = 0;
+    if (_OverrideAudio) {
+        audioPath = latestAudioPath
+    } else {
+        console.log("\nStarting audio generation...")
+        await genAudio(audioPath, videoScript)
+        if (_LatestOutputs) {
+            fs.copyFileSync(audioPath, latestAudioPath)
+        }
     }
-    console.log("Video and audio complete.")
+    audioDuration2 = await getMediaDuration(audioPath)
+    let audioDuration = await getMediaDuration(startAudioPath)
+    console.log("Audio generation complete.")
+    console.log("Audio lengths", audioDuration, audioDuration2)
+
+    let videoPath = `./output/video/complete-${pathIdentity}.mp4`
+    let latestVideoPath = `./output/video/complete-latest.mp4`
+    let ffmpegPipe = createOutputPipe(videoPath, framerate)
+    // tasks.push(genVideo(__dirname, ffmpegPipe.stdin, framerate, videoCode + "\n\n" + videoCorrectCode))
+    console.log("\nStarting video generation...")
+    let videoData = await genVideo(__dirname, ffmpegPipe.stdin, framerate, audioDuration, audioDuration2, videoIdea)
+    console.log(videoData)
+    await new Promise((res, rej) => {
+        ffmpegPipe.on("exit", () => {
+            if (_LatestOutputs) {
+                let exists = fs.existsSync(videoPath)
+                if (exists) {
+                    fs.copyFileSync(videoPath, latestVideoPath)
+                } else {
+                    console.log("Video copy error, most likely threw error while rendering.")
+                    return rej()
+                }
+            }
+            res()
+        })
+    }).catch(e => {
+        return console.log("Video render error", videoPath, audioPath, e)
+    })
+
+    console.log("Video generation complete.")
 
 
-    console.log("\nStarting video compilation...")
+    console.log("\nStarting compilation...")
 
+    let musicPath = music[Math.ceil(Math.random() * music.length) - 1]
+
+    let finalPath = `./output/final/complete-${pathIdentity}.mp4`
+    let latestFinalPath = `./output/final/complete-latest.mp4`
+    let outputFfmpeg = createFinalVideo(finalPath, videoPath, startAudioPath, videoData["audioDelay"], audioPath, videoData["audioDelay2"])
+    outputFfmpeg.stdout.on("data", (e) => {
+        console.log("DATA", e)
+    })
+    await new Promise((res, rej) => {
+        outputFfmpeg.on("exit", () => {
+            if (_LatestOutputs) {
+                let exists = fs.existsSync(finalPath)
+                if (exists) {
+                    fs.copyFileSync(finalPath, latestFinalPath)
+                } else {
+                    console.log("Final copy error, most likely threw error while compiling.")
+                    return rej("File doesnt exist:" + finalPath)
+                }
+            }
+            res()
+        })
+    }).catch(e => {
+        return console.log("Final compile error", videoPath, audioPath, finalPath, e)
+    })
     console.log("Video compilation complete.")
+
     console.log("-- Video Complete --\n")
 }
 
