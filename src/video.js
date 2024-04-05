@@ -22,8 +22,8 @@ module.exports = async (base, output, framerate, audioDuration, audioDuration2, 
     registerFont(base + '/src/fonts/FiraCode-Regular.ttf', { family: 'FiraCode' });
 
     let videoLength = startBuffer + audioDuration + startEndBuffer + countdownTime + countdownEndBuffer + audioDuration2 + endBufferTime
-    const length = videoLength;
-    const framenum = Math.ceil(length * framerate);
+    const length = Math.round(videoLength * 10) / 10;
+    const framenum = length * framerate;
 
     const width = 1080;
     const height = 1920;
@@ -240,6 +240,6 @@ module.exports = async (base, output, framerate, audioDuration, audioDuration2, 
 
     output.end();
 
-    return { audioDelay: startBuffer, audioDelay2: startBuffer + audioDuration + startEndBuffer + countdownTime + countdownEndBuffer }
+    return { audioDelay: startBuffer, audioDelay2: startBuffer + audioDuration + startEndBuffer + countdownTime + countdownEndBuffer, totalDuration: length }
 }
 

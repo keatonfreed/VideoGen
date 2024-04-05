@@ -8,43 +8,63 @@ const genAI = require("./src/ai")
 const genVideo = require("./src/video")
 const genAudio = require("./src/audio");
 const ffmpeg = require('fluent-ffmpeg');
+const uploadVideo = require('./src/youtube');
 let _OverrideIdea
 let _LatestOutputs = false
 let _OverrideAudio = false
+let _OverrideVideo = false
+let _PostYoutube = true
 
 
 // ----------------------- VIDEO GLOBAL CONFIG -----------------------
 
-
 _LatestOutputs = true
-_OverrideAudio = true
 
-_OverrideIdea = {
-    Idea: 'Create a custom function to reverse a string without using the built-in reverse method.',
-    CorrectCode: 'function reverseString(str) {\n' +
-        "  let reversed = '';\n" +
-        '  for (let i = str.length - 1; i >= 0; i--) {\n' +
-        '    reversed += str[i];\n' +
-        '  }\n' +
-        '  return reversed;\n' +
-        '}',
-    BugIdea: '1. Incorrectly incrementing instead of decrementing in the loop, 2. Starting loop at str.length instead of str.length - 1, 3. Using str.length in the condition instead of >= 0, 4. Returning the original string instead of the reversed, 5. Concatenating in the wrong order resulting in the original string, 6. Trying to use a non-existing built-in method thinking it would reverse, 7. Declaring reversed as an array and forgetting to join it back into a string, 8. Using const for reversed variable, causing errors when trying to modify it, 9. Loop counter going out of bounds, 10. Subtracting 1 twice, once in the initialization, and again in the loop body, making it skip the first character. After considering these, the choice of initializing the loop at str.length, which will lead to an undefined addition at the first concatenation adding an interesting and hard-to-spot bug, was made.',
-    Code: 'function reverseString(str) {\n' +
-        "  let reversed = '';\n" +
-        '  for (let i = str.length; i >= 0; i--) {\n' +
-        '    reversed += str[i];\n' +
-        '  }\n' +
-        '  return reversed;\n' +
-        '}',
-    Script: "By initializing the loop with str.length, it attempts to access an out-of-bounds character, adding undefined to the beginning of our reversed string, a sneaky bug that's hard to spot without careful analysis."
-}
+_PostYoutube = false
 
-music = [
-    `./src/assets/music/1.mp3`,
-    `./src/assets/music/2.mp3`,
+// _OverrideAudio = true
+// _OverrideVideo = { audioDelay: 0.5, audioDelay2: 6.18525, totalDuration: 19.1 }
+// _OverrideIdea = {
+//     Idea: 'Create a custom function to reverse a string without using the built-in reverse method.',
+//     CorrectCode: 'function reverseString(str) {\n' +
+//         "  let reversed = '';\n" +
+//         '  for (let i = str.length - 1; i >= 0; i--) {\n' +
+//         '    reversed += str[i];\n' +
+//         '  }\n' +
+//         '  return reversed;\n' +
+//         '}',
+//     BugIdea: '1. Incorrectly incrementing instead of decrementing in the loop, 2. Starting loop at str.length instead of str.length - 1, 3. Using str.length in the condition instead of >= 0, 4. Returning the original string instead of the reversed, 5. Concatenating in the wrong order resulting in the original string, 6. Trying to use a non-existing built-in method thinking it would reverse, 7. Declaring reversed as an array and forgetting to join it back into a string, 8. Using const for reversed variable, causing errors when trying to modify it, 9. Loop counter going out of bounds, 10. Subtracting 1 twice, once in the initialization, and again in the loop body, making it skip the first character. After considering these, the choice of initializing the loop at str.length, which will lead to an undefined addition at the first concatenation adding an interesting and hard-to-spot bug, was made.',
+//     Code: 'function reverseString(str) {\n' +
+//         "  let reversed = '';\n" +
+//         '  for (let i = str.length; i >= 0; i--) {\n' +
+//         '    reversed += str[i];\n' +
+//         '  }\n' +
+//         '  return reversed;\n' +
+//         '}',
+//     Script: "By initializing the loop with s-t-r dot length, it attempts to access an out-of-bounds character, adding undefined to the beginning of our reversed string, a sneaky bug that's hard to spot without careful analysis."
+// }
+
+_MusicList = [
+    [`./src/assets/music/pharoah-tatami.mp3`, `Music from #Uppbeat (free for Creators!):
+    https://uppbeat.io/t/tatami/pharoah
+    License code: TZKO4CXQKBNKGDTG`],
+    [`./src/assets/music/aurora-jeff-kaale.mp3`, `Music from #Uppbeat (free for Creators!):
+    https://uppbeat.io/t/jeff-kaale/aurora
+    License code: V8EMPFMUKF8ADLMZ`],
+    [`./src/assets/music/gravity-aavirall.mp3`, `Music from #Uppbeat (free for Creators!):
+    https://uppbeat.io/t/aavirall/gravity
+    License code: 6DYSSVM1SWNIKW5V`],
+    [`./src/assets/music/you-wish-dread-pitt.mp3`, `Music from #Uppbeat (free for Creators!):
+    https://uppbeat.io/t/dread-pitt/you-wish
+    License code: JFKILOYJFBAISPBB`],
+    [`./src/assets/music/born-with-it-sensho.mp3`, `Music from #Uppbeat (free for Creators!):
+    https://uppbeat.io/t/sensho/born-with-it
+    License code: F5B6JQRWZOEIHCGZ`],
+    // [`./src/assets/music/.mp3`, ``],
 ]
 
 // ----------------------- END VIDEO CONFIG -----------------------
+
 
 const framerate = 30
 
@@ -61,17 +81,23 @@ function createOutputPipe(path) {
         path
     ]);
 }
-function createFinalVideo(path, videoPath, musicPath, videoLength, audioPath, audioOffset, audioPath2, audioOffset2) {
+function createFinalVideo(path, videoPath, musicPath, totalDuration, audioPath, audioOffset, audioPath2, audioOffset2) {
     // ffmpeg -i video.mp4 -i audio.wav -c:v copy -c:a aac output.mp4
+    console.log(audioPath2, audioOffset2 * 1000)
     options = [
         '-i', videoPath,
         '-i', audioPath,
         '-i', audioPath2,
+        '-i', musicPath,
+        '-filter_complex', `[3:a]volume=0.15,afade=t=in:d=1,afade=t=out:st=${totalDuration - 1.5}:d=1.5[music]; [1:a]adelay=${audioOffset * 1000}|${audioOffset * 1000}[a1]; [2:a]adelay=${audioOffset2 * 1000}|${audioOffset2 * 1000}[a2]; [a1][a2]amix=inputs=2[a]; [a][music]amix=inputs=2[final]`,
+        // '-filter_complex', `[1]adelay=${audioOffset * 1000}|${audioOffset * 1000}[a1]; [2]adelay=${audioOffset2 * 1000}|${audioOffset2 * 1000}[a2]; [a1][a2]amix=inputs=2:duration=first[a];`,
+        // '-filter_complex', `[1]adelay=${audioOffset * 1000}|${audioOffset * 1000}[a1]; [2]adelay=${audioOffset2 * 1000}|${audioOffset2 * 1000}[a2]; [a1][a2]amix=inputs=2[a];`,
+        '-map', '0:v',
+        '-map', '[final]:a',
         '-c:v', 'copy',
         '-c:a', 'aac',
-        '-filter_complex', `[1:a]adelay=${audioOffset * 1000}|${audioOffset * 1000}[a1]; [2:a]adelay=${audioOffset2 * 1000}|${audioOffset2 * 1000}[a2]; [a1][a2]amix=inputs=2[a]`,
-        '-map', '0',
-        '-map', '[a]',
+        '-t', totalDuration,
+        '-y',
         path
     ]
     return spawn('ffmpeg', options);
@@ -113,6 +139,10 @@ async function createVideo() {
 
     let pathIdentity = Date.now().toString().slice(4, -2)
 
+    let musicSelection = _MusicList[Math.ceil(Math.random() * _MusicList.length) - 1]
+    let musicPath = musicSelection[0]
+    let musicCredits = musicSelection[1]
+
     let startAudioPath = `./src/assets/spot_the_bug.mp3`
 
     let audioPath = `./output/audio/complete-${pathIdentity}.mp3`
@@ -130,43 +160,50 @@ async function createVideo() {
     }
     audioDuration2 = await getMediaDuration(audioPath)
     let audioDuration = await getMediaDuration(startAudioPath)
-    console.log("Audio generation complete.")
     console.log("Audio lengths", audioDuration, audioDuration2)
+    console.log("Audio generation complete.")
 
     let videoPath = `./output/video/complete-${pathIdentity}.mp4`
     let latestVideoPath = `./output/video/complete-latest.mp4`
-    let ffmpegPipe = createOutputPipe(videoPath, framerate)
-    // tasks.push(genVideo(__dirname, ffmpegPipe.stdin, framerate, videoCode + "\n\n" + videoCorrectCode))
-    console.log("\nStarting video generation...")
-    let videoData = await genVideo(__dirname, ffmpegPipe.stdin, framerate, audioDuration, audioDuration2, videoIdea)
-    console.log(videoData)
-    await new Promise((res, rej) => {
-        ffmpegPipe.on("exit", () => {
-            if (_LatestOutputs) {
-                let exists = fs.existsSync(videoPath)
-                if (exists) {
-                    fs.copyFileSync(videoPath, latestVideoPath)
-                } else {
-                    console.log("Video copy error, most likely threw error while rendering.")
-                    return rej()
+    let videoData
+    if (_OverrideVideo) {
+        videoPath = latestVideoPath
+        videoData = _OverrideVideo
+        console.log(videoData)
+    } else {
+        let ffmpegPipe = createOutputPipe(videoPath, framerate)
+        // tasks.push(genVideo(__dirname, ffmpegPipe.stdin, framerate, videoCode + "\n\n" + videoCorrectCode))
+        console.log("\nStarting video generation...")
+        videoData = await genVideo(__dirname, ffmpegPipe.stdin, framerate, audioDuration, audioDuration2, videoIdea)
+        console.log(videoData)
+        await new Promise((res, rej) => {
+            ffmpegPipe.on("exit", () => {
+                if (_LatestOutputs) {
+                    let exists = fs.existsSync(videoPath)
+                    if (exists) {
+                        fs.copyFileSync(videoPath, latestVideoPath)
+                    } else {
+                        console.log("Video copy error, most likely threw error while rendering.")
+                        return rej()
+                    }
                 }
-            }
-            res()
+                res()
+            })
+        }).catch(e => {
+            return console.log("Video render error", videoPath, audioPath, e)
         })
-    }).catch(e => {
-        return console.log("Video render error", videoPath, audioPath, e)
-    })
+    }
 
     console.log("Video generation complete.")
 
 
     console.log("\nStarting compilation...")
 
-    let musicPath = music[Math.ceil(Math.random() * music.length) - 1]
+
 
     let finalPath = `./output/final/complete-${pathIdentity}.mp4`
     let latestFinalPath = `./output/final/complete-latest.mp4`
-    let outputFfmpeg = createFinalVideo(finalPath, videoPath, startAudioPath, videoData["audioDelay"], audioPath, videoData["audioDelay2"])
+    let outputFfmpeg = createFinalVideo(finalPath, videoPath, musicPath, videoData["totalDuration"], startAudioPath, videoData["audioDelay"], audioPath, videoData["audioDelay2"])
     outputFfmpeg.stdout.on("data", (e) => {
         console.log("DATA", e)
     })
@@ -186,7 +223,22 @@ async function createVideo() {
     }).catch(e => {
         return console.log("Final compile error", videoPath, audioPath, finalPath, e)
     })
-    console.log("Video compilation complete.")
+    console.log("Video compilation complete.", finalPath)
+
+    let postTitle = `Can you spot the bug in the code? #shorts`
+    let postDescription = `Spot the bug in the Javascript code! #coding #codechallenge #shorts\n\n${musicCredits}`
+    let postTags = ["Coding", "Programming", "Code Challenge"]
+
+    console.log("Post Details", postTitle)
+    console.log("Title:", postTitle)
+    console.log("Descr:", postDescription)
+    console.log("Tags:", JSON.stringify(postTags))
+
+    if (_PostYoutube) {
+        console.log("\nStarting Youtube upload...")
+        let uploadData = await uploadVideo("C:/Users/keato/Documents/Code/CodeVid/output/final/complete-latest.mp4", postTitle, postDescription, postTags)
+        console.log("Youtube upload complete.", `https://www.youtube.com/shorts/${uploadData.id}`)
+    }
 
     console.log("-- Video Complete --\n")
 }
