@@ -13,6 +13,7 @@ let _OverrideIdea
 let _LatestOutputs = false
 let _OverrideAudio = false
 let _OverrideVideo = false
+let _OverrideFinal = false
 let _PostYoutube = true
 
 
@@ -20,10 +21,13 @@ let _PostYoutube = true
 
 _LatestOutputs = true
 
-_PostYoutube = false
+// _PostYoutube = false
+
+_OverrideFinal = true
 
 // _OverrideAudio = true
 // _OverrideVideo = { audioDelay: 0.5, audioDelay2: 6.18525, totalDuration: 19.1 }
+// _OverrideVideo = { audioDelay: 0.5, audioDelay2: 6.18525, totalDuration: 15.8 }
 // _OverrideIdea = {
 //     Idea: 'Create a custom function to reverse a string without using the built-in reverse method.',
 //     CorrectCode: 'function reverseString(str) {\n' +
@@ -43,6 +47,34 @@ _PostYoutube = false
 //         '}',
 //     Script: "By initializing the loop with s-t-r dot length, it attempts to access an out-of-bounds character, adding undefined to the beginning of our reversed string, a sneaky bug that's hard to spot without careful analysis."
 // }
+_OverrideIdea = {
+    Idea: 'Develop a function that checks if a string is a palindrome.',
+    CorrectCode: 'function isPalindrome(str) {\n' +
+        '  let start = 0;\n' +
+        '  let end = str.length - 1;\n' +
+        '  while (start < end) {\n' +
+        '    if (str.charAt(start) !== str.charAt(end)) {\n' +
+        '      return false;\n' +
+        '    }\n' +
+        '    start++;\n' +
+        '    end--;\n' +
+        '  }\n' +
+        '  return true;\n' +
+        '}',
+    BugIdea: "1. Use wrong comparison operator in if condition, resulting in always true. 2. Incorrectly incrementing 'end' instead of decrementing, causing an infinite loop. 3. Not converting the string to the same case, causing case-sensitive checks to fail. 4. Skip checking characters and only compare the first and last one. 5. Initialize 'start' and 'end' with wrong values, causing early termination. 6. Return true inside the loop, leading to incorrect early positive results. 7. Forgetting to update 'start' or 'end' inside the loop, leading to an infinite loop. 8. Wrongly using str.length in comparison instead of actual indices. 9. Using '===' without considering type conversion for characters. 10. Misusing .charAt() with incorrect indexes. Decision: Not converting the string to the same case adds a non-obvious layer of complexity and engages understanding around case sensitivity in string comparison.",
+    Code: 'function isPalindrome(str) {\n' +
+        '  let start = 0;\n' +
+        '  let end = str.length - 1;\n' +
+        '  while (start < end) {\n' +
+        '    if (str.charAt(start) !== str.charAt(end)) {\n' +
+        '      return false;\n' +
+        '    }\n' +
+        '    start++;\n' +
+        '  }\n' +
+        '  return true;\n' +
+        '}',
+    Script: "Our bug? The function's logic never decreases the end variable. This will cause all character checks to be paired incorrectly, causing a failure."
+}
 
 _MusicList = [
     [`./src/assets/music/pharoah-tatami.mp3`, `Music from #Uppbeat (free for Creators!):
@@ -149,7 +181,7 @@ async function createVideo() {
     let latestAudioPath = `./output/audio/complete-latest.mp3`
     // tasks.push(genAudio(audioPath, videoScript))
     let audioDuration2 = 0;
-    if (_OverrideAudio) {
+    if (_OverrideAudio || _OverrideFinal) {
         audioPath = latestAudioPath
     } else {
         console.log("\nStarting audio generation...")
@@ -166,7 +198,7 @@ async function createVideo() {
     let videoPath = `./output/video/complete-${pathIdentity}.mp4`
     let latestVideoPath = `./output/video/complete-latest.mp4`
     let videoData
-    if (_OverrideVideo) {
+    if (_OverrideVideo || _OverrideFinal) {
         videoPath = latestVideoPath
         videoData = _OverrideVideo
         console.log(videoData)
@@ -203,26 +235,30 @@ async function createVideo() {
 
     let finalPath = `./output/final/complete-${pathIdentity}.mp4`
     let latestFinalPath = `./output/final/complete-latest.mp4`
-    let outputFfmpeg = createFinalVideo(finalPath, videoPath, musicPath, videoData["totalDuration"], startAudioPath, videoData["audioDelay"], audioPath, videoData["audioDelay2"])
-    outputFfmpeg.stdout.on("data", (e) => {
-        console.log("DATA", e)
-    })
-    await new Promise((res, rej) => {
-        outputFfmpeg.on("exit", () => {
-            if (_LatestOutputs) {
-                let exists = fs.existsSync(finalPath)
-                if (exists) {
-                    fs.copyFileSync(finalPath, latestFinalPath)
-                } else {
-                    console.log("Final copy error, most likely threw error while compiling.")
-                    return rej("File doesnt exist:" + finalPath)
-                }
-            }
-            res()
+    if (_OverrideFinal) {
+        finalPath = latestFinalPath
+    } else {
+        let outputFfmpeg = createFinalVideo(finalPath, videoPath, musicPath, videoData["totalDuration"], startAudioPath, videoData["audioDelay"], audioPath, videoData["audioDelay2"])
+        outputFfmpeg.stdout.on("data", (e) => {
+            console.log("DATA", e)
         })
-    }).catch(e => {
-        return console.log("Final compile error", videoPath, audioPath, finalPath, e)
-    })
+        await new Promise((res, rej) => {
+            outputFfmpeg.on("exit", () => {
+                if (_LatestOutputs) {
+                    let exists = fs.existsSync(finalPath)
+                    if (exists) {
+                        fs.copyFileSync(finalPath, latestFinalPath)
+                    } else {
+                        console.log("Final copy error, most likely threw error while compiling.")
+                        return rej("File doesnt exist:" + finalPath)
+                    }
+                }
+                res()
+            })
+        }).catch(e => {
+            return console.log("Final compile error", videoPath, audioPath, finalPath, e)
+        })
+    }
     console.log("Video compilation complete.", finalPath)
 
     let postTitle = `Can you spot the bug in the code? #shorts`
@@ -236,7 +272,7 @@ async function createVideo() {
 
     if (_PostYoutube) {
         console.log("\nStarting Youtube upload...")
-        let uploadData = await uploadVideo("C:/Users/keato/Documents/Code/CodeVid/output/final/complete-latest.mp4", postTitle, postDescription, postTags)
+        let uploadData = await uploadVideo(finalPath, postTitle, postDescription, postTags)
         console.log("Youtube upload complete.", `https://www.youtube.com/shorts/${uploadData.id}`)
     }
 

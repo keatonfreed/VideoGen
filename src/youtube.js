@@ -20,6 +20,8 @@ const SCOPES = ['https://www.googleapis.com/auth/youtube.upload'];
 const TOKEN_PATH = './src/auth/' + 'client_oauth_token.json';
 
 module.exports = async (videoPath, title, description, tags) => {
+    openURL("https://studio.youtube.com/channel/UC4CK90nHSx-CjkWA6CTM1ZA/videos/short")
+    return
     if (!fs.existsSync(videoPath)) throw new Error("Video from videoPath doesnt exist in upload video script.")
 
     return new Promise((res, rej) => {
@@ -96,8 +98,13 @@ function authorize(credentials, callback) {
     });
 }
 
+
 function openURL(path) {
-    exec(`start "" "${path}"`, (error) => {
+    // Determine the command based on the operating system
+    const command = process.platform === 'win32' ? `start "" "${path}"` : `open "${path}"`;
+
+    // Execute the command
+    exec(command, (error) => {
         if (error) {
             console.error(`Error opening URL: ${error}`);
             return;
@@ -106,6 +113,7 @@ function openURL(path) {
         console.log(path + ' opened in default browser');
     });
 }
+
 
 /**
  * Get and store new token after prompting for user authorization, and then
