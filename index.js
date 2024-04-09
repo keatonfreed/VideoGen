@@ -21,11 +21,11 @@ let _PostYoutube = true
 
 _LatestOutputs = true
 
-// _PostYoutube = false
+_PostYoutube = false
 
-_OverrideFinal = true
+// _OverrideFinal = true
 
-// _OverrideAudio = true
+_OverrideAudio = true
 // _OverrideVideo = { audioDelay: 0.5, audioDelay2: 6.18525, totalDuration: 19.1 }
 // _OverrideVideo = { audioDelay: 0.5, audioDelay2: 6.18525, totalDuration: 15.8 }
 // _OverrideIdea = {
@@ -47,33 +47,40 @@ _OverrideFinal = true
 //         '}',
 //     Script: "By initializing the loop with s-t-r dot length, it attempts to access an out-of-bounds character, adding undefined to the beginning of our reversed string, a sneaky bug that's hard to spot without careful analysis."
 // }
+// _OverrideIdea = {
+//     Idea: 'Develop a function that checks if a string is a palindrome.',
+//     CorrectCode: 'function isPalindrome(str) {\n' +
+//         '  let start = 0;\n' +
+//         '  let end = str.length - 1;\n' +
+//         '  while (start < end) {\n' +
+//         '    if (str.charAt(start) !== str.charAt(end)) {\n' +
+//         '      return false;\n' +
+//         '    }\n' +
+//         '    start++;\n' +
+//         '    end--;\n' +
+//         '  }\n' +
+//         '  return true;\n' +
+//         '}',
+//     BugIdea: "1. Use wrong comparison operator in if condition, resulting in always true. 2. Incorrectly incrementing 'end' instead of decrementing, causing an infinite loop. 3. Not converting the string to the same case, causing case-sensitive checks to fail. 4. Skip checking characters and only compare the first and last one. 5. Initialize 'start' and 'end' with wrong values, causing early termination. 6. Return true inside the loop, leading to incorrect early positive results. 7. Forgetting to update 'start' or 'end' inside the loop, leading to an infinite loop. 8. Wrongly using str.length in comparison instead of actual indices. 9. Using '===' without considering type conversion for characters. 10. Misusing .charAt() with incorrect indexes. Decision: Not converting the string to the same case adds a non-obvious layer of complexity and engages understanding around case sensitivity in string comparison.",
+//     Code: 'function isPalindrome(str) {\n' +
+//         '  let start = 0;\n' +
+//         '  let end = str.length - 1;\n' +
+//         '  while (start < end) {\n' +
+//         '    if (str.charAt(start) !== str.charAt(end)) {\n' +
+//         '      return false;\n' +
+//         '    }\n' +
+//         '    start++;\n' +
+//         '  }\n' +
+//         '  return true;\n' +
+//         '}',
+//     Script: "Our bug? The function's logic never decreases the end variable. This will cause all character checks to be paired incorrectly, causing a failure."
+// }
 _OverrideIdea = {
-    Idea: 'Develop a function that checks if a string is a palindrome.',
-    CorrectCode: 'function isPalindrome(str) {\n' +
-        '  let start = 0;\n' +
-        '  let end = str.length - 1;\n' +
-        '  while (start < end) {\n' +
-        '    if (str.charAt(start) !== str.charAt(end)) {\n' +
-        '      return false;\n' +
-        '    }\n' +
-        '    start++;\n' +
-        '    end--;\n' +
-        '  }\n' +
-        '  return true;\n' +
-        '}',
-    BugIdea: "1. Use wrong comparison operator in if condition, resulting in always true. 2. Incorrectly incrementing 'end' instead of decrementing, causing an infinite loop. 3. Not converting the string to the same case, causing case-sensitive checks to fail. 4. Skip checking characters and only compare the first and last one. 5. Initialize 'start' and 'end' with wrong values, causing early termination. 6. Return true inside the loop, leading to incorrect early positive results. 7. Forgetting to update 'start' or 'end' inside the loop, leading to an infinite loop. 8. Wrongly using str.length in comparison instead of actual indices. 9. Using '===' without considering type conversion for characters. 10. Misusing .charAt() with incorrect indexes. Decision: Not converting the string to the same case adds a non-obvious layer of complexity and engages understanding around case sensitivity in string comparison.",
-    Code: 'function isPalindrome(str) {\n' +
-        '  let start = 0;\n' +
-        '  let end = str.length - 1;\n' +
-        '  while (start < end) {\n' +
-        '    if (str.charAt(start) !== str.charAt(end)) {\n' +
-        '      return false;\n' +
-        '    }\n' +
-        '    start++;\n' +
-        '  }\n' +
-        '  return true;\n' +
-        '}',
-    Script: "Our bug? The function's logic never decreases the end variable. This will cause all character checks to be paired incorrectly, causing a failure."
+    "Idea": "Develop a function that returns an array where each element is the product of all other elements in the input array except itself, without using division.",
+    "CorrectCode": "function productArray(arr) {\n  let result = [];\n  for (let i = 0; i < arr.length; i++) {\n    let product = 1;\n    for (let j = 0; j < arr.length; j++) {\n      if (i !== j) {\n        product *= arr[j];\n      }\n    }\n    result.push(product);\n  }\n  return result;\n}",
+    "BugIdea": "Initializing the product variable with 0 instead of 1, which causes all the results to be 0 because any number multiplied by 0 is 0. This illustrates the impact of initial values in loop-based calculations.",
+    "Code": "function productArray(arr) {\n  let result = [];\n  for (let i = 0; i < arr.length; i++) {\n    let product = 0;\n    for (let j = 0; j < arr.length; j++) {\n      if (i !== j) {\n        product *= arr[j];\n      }\n    }\n    result.push(product);\n  }\n  return result;\n}",
+    "Script": "By setting the initial value of `product` to 0 instead of 1, the productArray function nullifies its own logic. Multiplying anything by 0 always results in 0, thus every calculation incorrectly yields 0."
 }
 
 _MusicList = [

@@ -19,7 +19,8 @@ const gradientNum = 7
 // --------------------- END VIDEO CONFIG ---------------------
 
 module.exports = async (base, output, framerate, audioDuration, audioDuration2, idea) => {
-    registerFont(base + '/src/fonts/FiraCode-Regular.ttf', { family: 'FiraCode' });
+    // registerFont(base + '/src/fonts/FiraCode-Regular.ttf', { family: 'FiraCode' });
+    registerFont(base + '/src/fonts/CourierPrime-Regular.ttf', { family: 'CourierPrime' });
 
     let videoLength = startBuffer + audioDuration + startEndBuffer + countdownTime + countdownEndBuffer + audioDuration2 + endBufferTime
     const length = Math.round(videoLength * 10) / 10;
@@ -160,10 +161,10 @@ module.exports = async (base, output, framerate, audioDuration, audioDuration2, 
         // }`;
 
         const textSettings = {
-            fontFamily: 'FiraCode',
+            fontFamily: 'CourierPrime',
             fontSize: 40,
-            lineHeight: 1.35,
-            charWidth: 1.1,
+            lineHeight: 1.3,
+            charWidth: 1.05,
             padding: 30,
         };
 
